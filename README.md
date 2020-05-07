@@ -88,3 +88,69 @@ Success!
 To recap, in this section we've covered:
 * Retrieving a value by referencing a key in an object.
 * Using range to iterate through a list of objects.
+
+### Step 3: Using a gotemplate file
+The `oc` utility has an additional option for using gotemplates which is `-o go-template-file=`.  In this section we'll move our gotemplate to a file, and build a more robust set of the details for our pod list.
+
+The first step is to get our gotemplate into a file.  The file name doesn't matter but my recommendation is to be indicative for easy identification.  In this case, we'll use `podlist.gotemplate` as the name and do a test run using the newly created file.
+```
+$ echo '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}' > podlist.gotemplate
+$ cat podlist.gotemplate 
+{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}
+$ oc get pods -o go-template-file=podlist.gotemplate
+httpd-example-1-build
+httpd-example-1-deploy
+httpd-example-1-rdnbw
+
+$
+```
+
+We've successfully moved our gotemplate structure into a file and can get data back.  However, we now have a strange blank line at the end of our output.  This happens because gotemplates pass through whitespace without filtering it; its left up to the gotemplate writer to remove that whitespace.  There are two ways we can fix the unnecessary whitespace.
+
+1. Rerun our `echo` command with `-n` to skip the newline character: `echo -n '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}' > podlist.gotemplate`
+2. Change the gotemplate to remove whitespace.
+
+Option 1 is low friction since you're just adding a flag to the echo command.  Option 2 requires some explanation but will help you in all gotemplates instead of just in this section so let's go with Option 2 by using your favorite text editor to open `podlist.gotemplate`.
+
+Your file should look like this.
+```
+{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}
+
+```
+
+Let's make this a bit more readable by putting the metadata and newline part of the template on its own line.
+```
+{{range .items}}
+    {{.metadata.name}}{{"\n"}}
+{{end}}
+```
+For the sake of example, if you save the file then rerun the `oc get` command we wind up with _a lot_ of whitespace.
+```
+$ oc get pods -o go-template-file=podlist.gotemplate
+
+    httpd-example-1-build
+
+
+    httpd-example-1-deploy
+
+
+    httpd-example-1-rdnbw
+
+```
+To fix this, we'll need to jump back to the gotemplate documentation on [text and spaces](https://golang.org/pkg/text/template/#hdr-Text_and_spaces).  To summarize, adding a hyphen inside `{{ }}` will remove whitespace from the size that the hypen is added to.  So `{{- }}` will remove space to the left, `{{ -}}` will remove space to the right, and `{{- -}}` will remove space from both sides.  Let's put this into practice with out `podlist.gotemplate` file to get the output we're expecting.  In your favorite editor, modify the file to look like this:
+```
+{{- range .items -}}
+    {{.metadata.name}}{{"\n"}}
+{{- end -}}
+```
+Then rerun the command for successful output!
+```
+$ oc get pods -o go-template-file=podlist.gotemplate
+httpd-example-1-build
+httpd-example-1-deploy
+httpd-example-1-rdnbw
+```
+
+#### Recap
+* We converted our commandline gotemplate structure to a file based gotemplate structure.
+* We learned how to influence the whitespace that the gotemplate engine gives back by using hypens in our template.
