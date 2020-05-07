@@ -33,6 +33,11 @@ Hello, World!"\n"[user@machine]$
 error: error parsing template Hello, World!{{\n}}, template: output:1: unexpected "\\" in command
 ```
 
+#### Recap
+* We passed a plain string to the gotemplate engine as a command line proof of concept.
+* We used `{{"\n"}}` to adjust the output formatting.
+* We learned how the gotemplate engine determines what it needs to interpret.
+
 ### Step 2: A practical example
 In order to write a gotemplate, we need to know what our output looks like.  We'll use pods as an example.
 
