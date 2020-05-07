@@ -90,9 +90,11 @@ httpd-example-1-rdnbw
 ```
 Success!
 
-To recap, in this section we've covered:
-* Retrieving a value by referencing a key in an object.
-* Using range to iterate through a list of objects.
+#### Recap
+* We learned how to interrogate the output from the API in order to write our gotemplate.
+* We learned how to return an individual value by using a key from the structure that's returned.
+* We learned how to use `range` to iterate over a list of objects.
+* We learned how to access a nested key's value with `.metadata.name`.
 
 ### Step 3: Using a gotemplate file
 The `oc` utility has an additional option for using gotemplates which is `-o go-template-file=`.  In this section we'll move our gotemplate to a file, and build a more robust set of the details for our pod list.
