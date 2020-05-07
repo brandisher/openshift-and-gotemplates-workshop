@@ -2,7 +2,7 @@
 A self-led workshop to demonstrate the power of go templates and how much fun you can have while using them with OpenShift!  Each section builds on the previous section but if you have some gotemplate knowledge already then you should be able to jump around without issue.
 
 ## Prerequisites
-* Access to an OpenShift cluster.  Some steps may require cluster-admin permissions.
+* Access to an OpenShift cluster.  Some lessons may require cluster-admin permissions.
 * A project for the workshop.  We'll be using a project named `workshop` with the `httpd-example` template deployed, but you can use whatever project you'd like that has running workloads.
 * `oc` in your `$PATH`
 
@@ -10,7 +10,7 @@ A self-led workshop to demonstrate the power of go templates and how much fun yo
 ### What is a gotemplate?
 gotemplate is a format used by the Go programming language.  The documentation for gotemplates can be found [here](https://golang.org/pkg/text/template/).  Keep this handy as a reference as we progress through the workshop.  In OpenShift, gotemplates are very helpful for encapsulating output logic and customizing the view that you get back from the API.
 
-### Step 1: A simple example
+### Lesson 1: A simple example
 The simplest example of a gotemplate is essentially a non-operation where we just print out a string that we pass to the template engine.
 ```
 [user@machine]$ oc get pods -o go-template='Hello, World!'
@@ -38,7 +38,7 @@ error: error parsing template Hello, World!{{\n}}, template: output:1: unexpecte
 * We used `{{"\n"}}` to adjust the output formatting.
 * We learned how the gotemplate engine determines what it needs to interpret.
 
-### Step 2: A practical example
+### Lesson 2: A practical example
 In order to write a gotemplate, we need to know what our output looks like.  We'll use pods as an example.
 
 ```
@@ -96,7 +96,7 @@ Success!
 * We learned how to use `range` to iterate over a list of objects.
 * We learned how to access a nested key's value with `.metadata.name`.
 
-### Step 3: Using a gotemplate file
+### Lesson 3: Using a gotemplate file
 The `oc` utility has an additional option for using gotemplates which is `-o go-template-file=`.  In this section we'll move our gotemplate to a file, and build a more robust set of the details for our pod list.
 
 The first step is to get our gotemplate into a file.  The file name doesn't matter but my recommendation is to be indicative for easy identification.  In this case, we'll use `podlist.gotemplate` as the name and do a test run using the newly created file.
