@@ -1,0 +1,3 @@
+{{- range .items -}}
+    {{.metadata.name}}{{"\n"}}
+{{- end -}}

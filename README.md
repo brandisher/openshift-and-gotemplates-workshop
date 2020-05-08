@@ -167,3 +167,4 @@ httpd-example-1-rdnbw
 #### Recap
 * We converted our commandline gotemplate structure to a file based gotemplate structure.
 * We learned how to influence the whitespace that the gotemplate engine gives back by using hypens in our gotemplate.
+* See `./lesson3.gotemplate` for the end result of what your template should look like.
