@@ -8,6 +8,7 @@ A self-led workshop to demonstrate the power of go templates and how much fun yo
 * [Lesson 2: A practical example](#lesson-2-a-practical-example)
 * [Lesson 3: Using a gotemplate file](#lesson-3-using-a-gotemplate-file)
 * [Lesson 4: Adding more context](#lesson-4-adding-more-context)
+* [Lesson 5: Gotemplate nesting and modularity](#lesson-5-gotemplate-nesting-and-modularity)
 
 ### Prerequisites
 * Access to an OpenShift cluster.  Some lessons may require cluster-admin permissions.
@@ -284,3 +285,161 @@ POD: httpd-example-1-rdnbw
   2. What lifecycle phase is the pod in?
   3. Are the pods using any volumes?
 * See `./lesson4.gotemplate` for the end result of what your template should look like.
+
+### Lesson 5: Gotemplate nesting and modularity
+In this lesson, we'll focus on making our template a bit more modular so we can avoid making changes in the main template.  Since `podlist.gotemplate` is rather small, this isn't a big inconvenience but when you get into more complex gotemplates the nesting functionality will save you a lot of time!
+
+If you've been following along, your `podlist.gotemplate` should look like this:
+```
+{{- range .items -}}
+    POD: {{.metadata.name}}
+    NODE: {{.spec.nodeName}}
+    PHASE: {{.status.phase}}
+    VOLUMES: {{range .spec.volumes -}}
+                {{.name}}{{" "}}
+             {{- end -}}
+             {{"\n"}}
+{{- end -}}
+```
+What we're going to do is move the logic for the volumes to it's own template so we can make changes to the volume display easier.  The first thing we need to do is define our template at the top of `podlist.gotemplate` and copy in our `range` block that's next to `VOLUMES`
+```
+{{- define "volumes" -}}
+    {{range .spec.volumes -}}
+        {{.name}}{{" "}}
+    {{- end -}}
+{{- end -}}
+```
+This template definition allows us to call it directly in our main template; let's make that change next by removing the `range` block next to `VOLUMES` and calling the new template we just defined.  The end result will look like this:
+```
+{{- define "volumes" -}}
+    {{range .spec.volumes -}}
+        {{.name}}{{" "}}
+    {{- end -}}
+{{- end -}}
+
+{{- range .items -}}
+    POD: {{.metadata.name}}
+    NODE: {{.spec.nodeName}}
+    PHASE: {{.status.phase}}
+    VOLUMES: {{template "volumes" .}}{{"\n"}}
+{{- end -}}
+```
+You'll notice that all we passed to our newly defined template is "." which amounts to the current object being iterated on.  So `{{template "volumes" .items[0]}}` then `{{template "volumes" .items[1]}}` and so on.  Now let's run it to prove that it works.
+```
+$ oc get pods -o go-template-file=podlist.gotemplate
+POD: httpd-example-1-build
+    NODE: worker-0.mycluster.com
+    PHASE: Succeeded
+    VOLUMES: buildcachedir buildworkdir [...snipped]
+POD: httpd-example-1-deploy
+    NODE: worker-0.mycluster.com
+    PHASE: Succeeded
+    VOLUMES: deployer-token-7jw9f 
+POD: httpd-example-1-rdnbw
+    NODE: worker-1.mycluster.com
+    PHASE: Running
+    VOLUMES: default-token-ths25
+```
+That looks good!
+
+Now, you might be saying to yourself "Why did we do that work to get the same output we had before?!"  The answer is "modularity".  Taking our build pod as an example, there are a 10+ volumes which quickly becomes unreadable when its all on one line.  If we change the main template there's a risk that we'll impact the formatting of other pieces if we're not careful.  The defined template lets us operate *only* on the volume list without impacting the main template.
+
+Let's give this modularity a shot by adjusting the `volumes` template to display the list vertically instead of horizontally and then run the full template to see the output.
+```
+$ head -n 5 podlist.gotemplate 
+{{- define "volumes" -}}
+    {{range .spec.volumes}}
+        {{.name -}}
+    {{end}}
+{{- end -}}
+
+$ oc get pods -o go-template-file=podlist.gotemplate
+POD: httpd-example-1-build
+    NODE: worker-0.mycluster.com
+    PHASE: Succeeded
+    VOLUMES: 
+        buildcachedir
+        buildworkdir
+        builder-dockercfg-dpmt2-push
+        builder-dockercfg-dpmt2-pull
+        build-system-configs
+        build-ca-bundles
+        build-proxy-ca-bundles
+        container-storage-root
+        build-blob-cache
+        builder-token-46g6q
+POD: httpd-example-1-deploy
+    NODE: worker-0.mycluster.com
+    PHASE: Succeeded
+    VOLUMES: 
+        deployer-token-7jw9f
+POD: httpd-example-1-rdnbw
+    NODE: worker-1.mycluster.com
+    PHASE: Running
+    VOLUMES: 
+        default-token-ths25
+```
+That definitely makes the volume list much easier to read!  Now let's use this premise of modularity to add more to our output.  It might be helpful to have the list of labels on the pods also, so let's define a gotemplate for labels.  Since labels are key:value pairs, we'll need to leverage variable assignment to get both the key and the value.  At the top of `podlist.gotemplate` add the following `labels` definition.
+```
+{{- define "labels" -}}
+    {{range $label,$value := .metadata.labels}}
+        {{$label}}{{" => "}}{{$value -}}
+    {{end}}
+{{- end -}}
+```
+Let's break down what this is doing.
+1. Define a template named `labels`.
+2. Iterate over the passed in pipeline using `range`.  The label *key* gets assigned to the `$label` variable and the label *value* gets assigned to the `$value` variable.
+3. Print out the value of `$label` and `$value` separated by `=>`.  We're using a hyphen on the right side of the `$value` to remove any extra whitespace after the label value gets printed.
+
+Now that we understand what this template is doing, we need to incorporate it into our main template to print out the labels.  Add a `LABELS` section to the main template so it looks like the following and then run the template:
+```
+$ tail -n 8 podlist.gotemplate 
+{{- range .items -}}
+    POD: {{.metadata.name}}
+    NODE: {{.spec.nodeName}}
+    PHASE: {{.status.phase}}
+    VOLUMES: {{template "volumes" .}}
+    LABELS: {{template "labels" .}}
+    {{- "\n"}}
+{{- end -}}
+
+$ oc get pods -o go-template-file=podlist.gotemplate
+POD: httpd-example-1-build
+    NODE: worker-0.mycluster.com
+    PHASE: Succeeded
+    VOLUMES: 
+        buildcachedir
+        buildworkdir
+        builder-dockercfg-dpmt2-push
+        builder-dockercfg-dpmt2-pull
+        build-system-configs
+        build-ca-bundles
+        build-proxy-ca-bundles
+        container-storage-root
+        build-blob-cache
+        builder-token-46g6q
+    LABELS: 
+        openshift.io/build.name => httpd-example-1
+POD: httpd-example-1-deploy
+    NODE: worker-0.mycluster.com
+    PHASE: Succeeded
+    VOLUMES: 
+        deployer-token-7jw9f
+    LABELS: 
+        openshift.io/deployer-pod-for.name => httpd-example-1
+POD: httpd-example-1-rdnbw
+    NODE: worker-1.mycluster.com
+    PHASE: Running
+    VOLUMES: 
+        default-token-ths25
+    LABELS: 
+        deployment => httpd-example-1
+        deploymentconfig => httpd-example
+        name => httpd-example
+```
+#### Recap
+* We learned how to define a template and nest it in another template.
+* We demonstrated how modularity in gotemplates can be used.
+* We learned some basic variable assignment within `range` to get key:value pairs.
+* See `./lesson5.gotemplate` for the end result of what your template should look like.
