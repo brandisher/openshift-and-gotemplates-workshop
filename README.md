@@ -9,6 +9,7 @@ A self-led workshop to demonstrate the power of go templates and how much fun yo
 * [Lesson 3: Using a gotemplate file](#lesson-3-using-a-gotemplate-file)
 * [Lesson 4: Adding more context](#lesson-4-adding-more-context)
 * [Lesson 5: Gotemplate nesting and modularity](#lesson-5-gotemplate-nesting-and-modularity)
+* [Lesson 6: Conditionals](#lesson-6-conditionals)
 
 ### Prerequisites
 * Access to an OpenShift cluster.  Some lessons may require cluster-admin permissions.
@@ -152,7 +153,7 @@ $ oc get pods -o go-template-file=podlist.gotemplate
     httpd-example-1-rdnbw
 
 ```
-To fix this, we'll need to jump back to the gotemplate documentation on [text and spaces](https://golang.org/pkg/text/template/#hdr-Text_and_spaces).  To summarize, adding a hyphen inside `{{ }}` will remove whitespace from the size that the hypen is added to.  So `{{- }}` will remove space to the left, `{{ -}}` will remove space to the right, and `{{- -}}` will remove space from both sides.  Let's put this into practice with out `podlist.gotemplate` file to get the output we're expecting.  In your favorite editor, modify the file to look like this:
+To fix this, we'll need to jump back to the gotemplate documentation on [text and spaces](https://golang.org/pkg/text/template/#hdr-Text_and_spaces).  To summarize, adding a hyphen inside `{{ }}` will remove whitespace from the side that the hypen is added to.  So `{{- }}` will remove space to the left, `{{ -}}` will remove space to the right, and `{{- -}}` will remove space from both sides.  Let's put this into practice with out `podlist.gotemplate` file to get the output we're expecting.  In your favorite editor, modify the file to look like this:
 ```
 {{- range .items -}}
     {{.metadata.name}}{{"\n"}}
@@ -443,3 +444,130 @@ POD: httpd-example-1-rdnbw
 * We demonstrated how modularity in gotemplates can be used.
 * We learned some basic variable assignment within `range` to get key:value pairs.
 * See `./lesson5.gotemplate` for the end result of what your template should look like.
+
+### Lesson 6: Conditionals
+In this lesson we'll learn about conditionals and how to use them to influence our output.
+
+Through the lessons so far, we've been using the same `oc get pods` command as the vehicle to test out `podlist.template`.  But what happens if we accidentally do `oc get services` with `podlist.gotemplate`?  Will the output be misleading or incorrect?  Let's test!
+```
+$ oc get services -o go-template-file=podlist.gotemplate
+POD: httpd-example
+    NODE: <no value>
+    PHASE: <no value>
+    VOLUMES: 
+    LABELS: 
+        app => httpd-example
+        template => httpd-example
+```
+We can quickly see that this is partially correct and partially misleading.  `httpd-example` may look similar to a pod name, but its actually the name of the service.  However, the labels are correct; modularity for the win!  Now we need to make sure that our template only runs for pods.  What we'll add is an `if` statement and check to ensure that the value of `Kind` is equal to the string `Pod`.  If that evaluates to `true` then the template will run for that particular object.  Adjust your main template to look like the following:
+```
+$ tail -n 10 podlist.gotemplate 
+{{- range .items -}}
+    {{- if eq .kind "Pod" -}}
+    POD: {{.metadata.name}}
+    NODE: {{.spec.nodeName}}
+    PHASE: {{.status.phase}}
+    VOLUMES: {{template "volumes" .}}
+    LABELS: {{template "labels" .}}
+    {{- "\n"}}
+    {{- end -}}
+{{- end -}}
+```
+If you check in the [gotemplate Actions](https://golang.org/pkg/text/template/#hdr-Actions) documentation, you'll see there's an option to do `{{if pipeline}}` where pipeline can be an actual pipeline (like our list of objects) or a sequence of commands/functions.  In this case, we're using the `eq` (equals) function to check if the value of `.kind` matches the string `Pod`.  If this returns true, it'll print out all of the data we expect to see for a pod like in the previous lessons.  More on `eq` and other comparison functions can be found in the [gotemplate Functions](https://golang.org/pkg/text/template/#hdr-Functions) documentation.
+
+To test out our template, let's do `oc get all` so we're checking against more than just the `Service` use case.  We'll also run a sanity check using `oc get services` to ensure nothing gets returned.
+```
+$ oc get all -o go-template-file=podlist.gotemplate
+POD: httpd-example-1-build
+    NODE: worker-0.mycluster.com
+    PHASE: Succeeded
+    VOLUMES: 
+        buildcachedir
+        buildworkdir
+        builder-dockercfg-dpmt2-push
+        builder-dockercfg-dpmt2-pull
+        build-system-configs
+        build-ca-bundles
+        build-proxy-ca-bundles
+        container-storage-root
+        build-blob-cache
+        builder-token-46g6q
+    LABELS: 
+        openshift.io/build.name => httpd-example-1
+POD: httpd-example-1-deploy
+    NODE: worker-0.mycluster.com
+    PHASE: Succeeded
+    VOLUMES: 
+        deployer-token-7jw9f
+    LABELS: 
+        openshift.io/deployer-pod-for.name => httpd-example-1
+POD: httpd-example-1-rdnbw
+    NODE: worker-1.mycluster.com
+    PHASE: Running
+    VOLUMES: 
+        default-token-ths25
+    LABELS: 
+        deployment => httpd-example-1
+        deploymentconfig => httpd-example
+        name => httpd-example
+
+$ oc get services -o go-template-file=podlist.gotemplate
+$
+```
+Fantastic!  We can see only our pods get returned and when we run `podlist.gotemplate` against a non-pod resource we don't get any output.  There's one more area that we can use conditionals on in `podlist.gotemplate`; specifically the `labels` template.  In general, a pod will always have a name, phase, node, and volume(s) but it may not have labels.  If I remove the `openshift.io/build.name` from `pod/httpd-example-1-build`, the output is blank which doesn't tell us if there's an issue processing the labels or if there are actually no labels.
+```
+$ oc get pods -o go-template-file=podlist.gotemplate
+POD: httpd-example-1-build
+    NODE: worker-0.mycluster.com
+    PHASE: Succeeded
+    VOLUMES: 
+        buildcachedir
+        buildworkdir
+        builder-dockercfg-dpmt2-push
+        builder-dockercfg-dpmt2-pull
+        build-system-configs
+        build-ca-bundles
+        build-proxy-ca-bundles
+        container-storage-root
+        build-blob-cache
+        builder-token-46g6q
+    LABELS:
+```
+We can use conditionals to make this more obious when there are no labels.  Let's adjust our `labels` template to include a conditional and rerun our test.
+```
+$ head -n 9 podlist.gotemplate 
+{{- define "labels" -}}
+    {{if .metadata.labels}}
+    {{- range $label,$value := .metadata.labels}}
+        {{$label}}{{" => "}}{{$value -}}
+    {{end}}
+    {{else}}
+        No labels
+    {{end}}
+{{- end -}}
+
+$ oc get pods -o go-template-file=podlist.gotemplate
+POD: httpd-example-1-build
+    NODE: worker-0.mycluster.com
+    PHASE: Succeeded
+    VOLUMES: 
+        buildcachedir
+        buildworkdir
+        builder-dockercfg-dpmt2-push
+        builder-dockercfg-dpmt2-pull
+        build-system-configs
+        build-ca-bundles
+        build-proxy-ca-bundles
+        container-storage-root
+        build-blob-cache
+        builder-token-46g6q
+    LABELS: 
+        No labels
+```
+Now we can see definitively when there are no labels instead of assuming that blank space means labels!
+
+#### Recap
+* We learned about conditionals and how important they are for gotemplate accuracy.
+* We learned how to filter out objects from our output using conditionals.
+* We used conditionals to make our output clearer when there are no labels on a pod.
+* See `./lesson6.gotemplate` for the end result of what your template should look like.
