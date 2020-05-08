@@ -7,6 +7,7 @@ A self-led workshop to demonstrate the power of go templates and how much fun yo
 * [Lesson 1: A simple example](#lesson-1-a-simple-example)
 * [Lesson 2: A practical example](#lesson-2-a-practical-example)
 * [Lesson 3: Using a gotemplate file](#lesson-3-using-a-gotemplate-file)
+* [Lesson 4: Adding more context](#lesson-4-adding-more-context)
 
 ### Prerequisites
 * Access to an OpenShift cluster.  Some lessons may require cluster-admin permissions.
@@ -168,3 +169,118 @@ httpd-example-1-rdnbw
 * We converted our commandline gotemplate structure to a file based gotemplate structure.
 * We learned how to influence the whitespace that the gotemplate engine gives back by using hypens in our gotemplate.
 * See `./lesson3.gotemplate` for the end result of what your template should look like.
+
+### Lesson 4: Adding more context
+In Lesson 3, we laid the foundation for our podlist gotemplate but we didn't accomplish anything substantial in terms of output or giving ourselves more context.  This lesson will focus on expanding the context of our `podlist.gotemplate` to provide a more comprehensive picture of the pods that get returned.
+
+To determine our success criteria, let's determine some questions we want to answer by using the gotemplate.
+1. What nodes are the pods running on?
+2. What lifecycle phase is the pod in?
+3. Are the pods using any volumes?
+
+Number 1 is pretty easy since we're just accessing an individual key.  Let's add `{{.spec.nodeName}}{{"\n"}}` to `podlist.gotemplate` and try it out.
+```
+$ cat podlist.gotemplate 
+{{- range .items -}}
+    {{.metadata.name}}{{"\n"}}
+    {{.spec.nodeName}}{{"\n"}}
+{{- end -}}
+
+$ oc get pods -o go-template-file=podlist.gotemplate
+httpd-example-1-build
+
+    worker-0.mycluster.com
+httpd-example-1-deploy
+
+    worker-0.mycluster.com
+httpd-example-1-rdnbw
+
+    worker-1.mycluster.com
+```
+This is pretty close but the formatting is off and at a glance, we don't have any labels which describe what we're looking at.  To remove the extra newline, we'll drop the `{{"\n"}}` after the pod name and then we can add some additional text so we know what the output means.
+```
+$ cat podlist.gotemplate 
+{{- range .items -}}
+    POD: {{.metadata.name}}
+    NODE: {{.spec.nodeName}}{{"\n"}}
+{{- end -}}
+
+$ oc get pods -o go-template-file=podlist.gotemplate
+POD: httpd-example-1-build
+    NODE: worker-0.mycluster.com
+POD: httpd-example-1-deploy
+    NODE: worker-0.mycluster.com
+POD: httpd-example-1-rdnbw
+    NODE: worker-1.mycluster.com
+```
+Much better.  Now we can easily tell what the pod's name is, and what node its running on.  One thing you'll notice about this output is that NODE is indented but if you look at `podlist.gotemplate`, they appear to be on the same level.  This goes back to how the gotemplate engine processes whitespace; the hypen on the right side of our opening `range` block removes the whitspace from the template up until the word `POD`, then it prints out the pod name, followed by 4 spaces, and then `NODE`.  If you want to be more verbose about formatting, you can accomplish the same thing by making your template look like the following:
+```
+$ cat podlist.gotemplate 
+{{- range .items -}}
+    POD: {{.metadata.name}}{{"\n" -}}
+    {{"    "}}NODE: {{.spec.nodeName}}{{"\n"}}
+{{- end -}}
+
+$ oc get pods -o go-template-file=podlist.gotemplate
+POD: httpd-example-1-build
+    NODE: worker-0.mycluster.com
+POD: httpd-example-1-deploy
+    NODE: worker-0.mycluster.com
+POD: httpd-example-1-rdnbw
+    NODE: worker-1.mycluster.com
+```
+For the rest of this lesson, we'll use the simplified version but when building gotemplates, use your best judgement for where you need to use the formatting tweaks.
+
+Next, we need to get the pod's lifecycle phase which is similar to getting the node that the pod is running on.  All we need to add is a call to `.status.phase` in our template.
+```
+$ cat podlist.gotemplate 
+{{- range .items -}}
+    POD: {{.metadata.name}}
+    NODE: {{.spec.nodeName}}
+    PHASE: {{.status.phase}}{{"\n"}}
+{{- end -}}
+
+$ oc get pods -o go-template-file=podlist.gotemplate
+POD: httpd-example-1-build
+    NODE: worker-0.mycluster.com
+    PHASE: Succeeded
+POD: httpd-example-1-deploy
+    NODE: worker-0.mycluster.com
+    PHASE: Succeeded
+POD: httpd-example-1-rdnbw
+    NODE: worker-1.mycluster.com
+    PHASE: Running
+```
+The last piece we need to accomplish is getting a list of volumes from the pod.
+```
+$ cat podlist.gotemplate 
+{{- range .items -}}
+    POD: {{.metadata.name}}
+    NODE: {{.spec.nodeName}}
+    PHASE: {{.status.phase}}
+    VOLUMES: {{range .spec.volumes -}}
+                {{.name}}{{" "}}
+             {{- end -}}
+             {{"\n"}}
+{{- end -}}
+
+$ oc get pods -o go-template-file=podlist.gotemplate
+POD: httpd-example-1-build
+    NODE: worker-0.mycluster.com
+    PHASE: Succeeded
+    VOLUMES: buildcachedir buildworkdir [...snipped for brevity]
+POD: httpd-example-1-deploy
+    NODE: worker-0.mycluster.com
+    PHASE: Succeeded
+    VOLUMES: deployer-token-7jw9f 
+POD: httpd-example-1-rdnbw
+    NODE: worker-1.mycluster.com
+    PHASE: Running
+    VOLUMES: default-token-ths25
+```
+#### Recap
+* We expanded `podlist.gotemplate` to provide more context and to answer these questions:
+  1. What nodes are the pods running on?
+  2. What lifecycle phase is the pod in?
+  3. Are the pods using any volumes?
+* See `./lesson4.gotemplate` for the end result of what your template should look like.
