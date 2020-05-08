@@ -1,12 +1,18 @@
 # OpenShift and Go Templates Workshop
 A self-led workshop to demonstrate the power of go templates and how much fun you can have while using them with OpenShift!  Each section builds on the previous section but if you have some gotemplate knowledge already then you should be able to jump around without issue.
 
-## Prerequisites
+### Table of Contents
+* [Prerequisites](#prerequisites)
+* [What is a gotemplate?](#what-is-a-gotemplate)
+* [Lesson 1: A simple example](#lesson-1-a-simple-example)
+* [Lesson 2: A practical example](#lesson-2-a-practical-example)
+* [Lesson 3: Using a gotemplate file](#lesson-3-using-a-gotemplate-file)
+
+### Prerequisites
 * Access to an OpenShift cluster.  Some lessons may require cluster-admin permissions.
 * A project for the workshop.  We'll be using a project named `workshop` with the `httpd-example` template deployed, but you can use whatever project you'd like that has running workloads.
 * `oc` in your `$PATH`
 
-## Start
 ### What is a gotemplate?
 gotemplate is a format used by the Go programming language.  The documentation for gotemplates can be found [here](https://golang.org/pkg/text/template/).  Keep this handy as a reference as we progress through the workshop.  In OpenShift, gotemplates are very helpful for encapsulating output logic and customizing the view that you get back from the API.
 
@@ -160,4 +166,4 @@ httpd-example-1-rdnbw
 
 #### Recap
 * We converted our commandline gotemplate structure to a file based gotemplate structure.
-* We learned how to influence the whitespace that the gotemplate engine gives back by using hypens in our template.
+* We learned how to influence the whitespace that the gotemplate engine gives back by using hypens in our gotemplate.
