@@ -623,15 +623,9 @@ Now its much more clear that we're going to print `$label` followed by `=>` and 
 At this point, the above workshop has covered most of what you'd need to know in order to be proficient in using gotemplates.  The next part of this workshop will be covering specific use cases where gotemplates can be used to facilitate with cluster operation and interrogation.  The use cases will cover more advanced gotemplate writing like chaining functions, deeper logic, and operationalizing gotemplates.  The use case sections are not designed in any particular order and can be used atomically.
 
 ### Use Case: Identifying Tainted Nodes
-**Test Conditions**
-* `oc get nodes -o go-template-file=tainted-nodes.gotemplate`
-* Tested against list of nodes
-* Tainted node `worker-1` using `oc adm taint nodes worker-1.mycluster.com app=myapp:NoSchedule`
+Use this gotemplate to identify which nodes have taints configured.
 
-**Implementation Details**
-* The template is List and single object aware so it'll work with either `oc get nodes -o go-template-file=tainted-nodes.gotemplate` or `oc get nodes [node] -o go-template-file=tainted-nodes.gotemplate`
-* [tainted-nodes.gotemplate](tainted-nodes.gotemplate)
-
+**Go Template**: [tainted-nodes.gotemplate](tainted-nodes.gotemplate)
 ```
 $ oc get nodes -o go-template-file=tainted-nodes.gotemplate 
 NODE: worker-1.mycluster.com
@@ -640,6 +634,13 @@ TAINTS:
   Value: myapp
   Effect: NoSchedule
 ```
+**Tips**
+* The template is List and single object aware so it'll work with `oc get nodes` and `oc get nodes [node]`
+
+**Test Conditions**
+* Tested against list of nodes
+* Tested against a single node
+* Tainted node `worker-1` using `oc adm taint nodes worker-1.mycluster.com app=myapp:NoSchedule`
 
 ### Use Case: Error and Warning Event Dashboard
 Use this gotemplate to get a shorthand list of warning/error events, their counts, the namespace in which they occurred.
@@ -674,4 +675,3 @@ COUNT    NAMESPACE       MESSAGE
     <unknown>   Normal   Scheduled          pod/httpd-example-1-nrr69               Successfully assigned workshop/httpd-example-1-nrr69 to worker-2.mycluster.com
     ...[snipped]
     ```
-
