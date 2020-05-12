@@ -11,6 +11,7 @@ A self-led workshop to demonstrate the power of go templates and how much fun yo
 * [Lesson 5: Gotemplate nesting and modularity](#lesson-5-gotemplate-nesting-and-modularity)
 * [Lesson 6: Conditionals](#lesson-6-conditionals)
 * [Lesson 7: Functions](#lesson-7-functions)
+* [Beyond the Workshop](#beyond-the-workshop)
 
 ### Prerequisites
 * Access to an OpenShift cluster.  Some lessons may require cluster-admin permissions.
@@ -614,3 +615,7 @@ Now its much more clear that we're going to print `$label` followed by `=>` and 
 * We added a container count metric using the `len` function.
 * We simplified our `labels` template by using the `print` function.
 * See `./lesson7.gotemplate` for the end result of what your template should look like.
+
+---
+### Beyond the Workshop
+At this point, the above workshop has covered most of what you'd need to know in order to be proficient in using gotemplates.  The next part of this workshop will be covering specific use cases where gotemplates can be used to facilitate with cluster operation and interrogation.  The use cases will cover more advanced gotemplate writing like chaining functions, deeper logic, and operationalizing gotemplates.  The use case sections are not designed in any particular order and can be used atomically.
