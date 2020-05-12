@@ -13,6 +13,7 @@ A self-led workshop to demonstrate the power of go templates and how much fun yo
 * [Lesson 7: Functions](#lesson-7-functions)
 * [Beyond the Workshop](#beyond-the-workshop)
 * [Use Case: Identifying Tainted Nodes](#use-case-identifying-tainted-nodes)
+* [Use Case: Error and Warning Event Dashboard](#use-case-error-and-warning-event-dashboard)
 
 ### Prerequisites
 * Access to an OpenShift cluster.  Some lessons may require cluster-admin permissions.
@@ -639,3 +640,38 @@ TAINTS:
   Value: myapp
   Effect: NoSchedule
 ```
+
+### Use Case: Error and Warning Event Dashboard
+Use this gotemplate to get a shorthand list of warning/error events, their counts, the namespace in which they occurred.
+
+**Go Template**: [error-warning-event-dashboard.gotemplate](error-warning-event-dashboard.gotemplate)
+```
+$ oc get events -o go-template-file=error-warning-event-dashboard.gotemplate
+COUNT    NAMESPACE       MESSAGE
+13       openshift-sdn   Liveness probe failed: ovs-ofctl: /var/run/openvswitch/br0.mgmt: failed to open socket (Broken pipe)
+```
+**Tips**
+* Add `--sort-by={.count}` to apply event sorting by count.
+
+**Test Conditions**
+* Project with no events
+    ```
+    $ oc get events -o go-template-file=error-warning-event-dashboard.gotemplate
+    There are no events.
+    ```
+* Project with no Warning/Error events
+    ```
+    $ oc get events -o go-template-file=error-warning-event-dashboard.gotemplate
+    COUNT    NAMESPACE       MESSAGE
+
+    $ oc get events
+    LAST SEEN   TYPE     REASON             OBJECT                                  MESSAGE
+    12m         Normal   Killing            pod/httpd-example-1-7xz5x               Stopping container httpd-example
+    11m         Normal   Pulled             pod/httpd-example-1-hhzcj               Container image "image-registry.openshift-image-registry.svc:5000/workshop/httpd-example@sha256:afe489302ba6d0f29bd1da7c612be8c8d3c00ed29fb29f114a17a9c81a53d6e0" already present on machine
+    11m         Normal   Created            pod/httpd-example-1-hhzcj               Created container httpd-example
+    11m         Normal   Started            pod/httpd-example-1-hhzcj               Started container httpd-example
+    <unknown>   Normal   Scheduled          pod/httpd-example-1-hhzcj               Successfully assigned workshop/httpd-example-1-hhzcj to worker-0.mycluster.com
+    <unknown>   Normal   Scheduled          pod/httpd-example-1-nrr69               Successfully assigned workshop/httpd-example-1-nrr69 to worker-2.mycluster.com
+    ...[snipped]
+    ```
+
