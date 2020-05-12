@@ -12,6 +12,7 @@ A self-led workshop to demonstrate the power of go templates and how much fun yo
 * [Lesson 6: Conditionals](#lesson-6-conditionals)
 * [Lesson 7: Functions](#lesson-7-functions)
 * [Beyond the Workshop](#beyond-the-workshop)
+* [Use Case: Identifying Tainted Nodes](#use-case-identifying-tainted-nodes)
 
 ### Prerequisites
 * Access to an OpenShift cluster.  Some lessons may require cluster-admin permissions.
@@ -619,3 +620,22 @@ Now its much more clear that we're going to print `$label` followed by `=>` and 
 ---
 ### Beyond the Workshop
 At this point, the above workshop has covered most of what you'd need to know in order to be proficient in using gotemplates.  The next part of this workshop will be covering specific use cases where gotemplates can be used to facilitate with cluster operation and interrogation.  The use cases will cover more advanced gotemplate writing like chaining functions, deeper logic, and operationalizing gotemplates.  The use case sections are not designed in any particular order and can be used atomically.
+
+### Use Case: Identifying Tainted Nodes
+**Test Conditions**
+* `oc get nodes -o go-template-file=tainted-nodes.gotemplate`
+* Tested against list of nodes
+* Tainted node `worker-1` using `oc adm taint nodes worker-1.mycluster.com app=myapp:NoSchedule`
+
+**Implementation Details**
+* The template is List and single object aware so it'll work with either `oc get nodes -o go-template-file=tainted-nodes.gotemplate` or `oc get nodes [node] -o go-template-file=tainted-nodes.gotemplate`
+* [tainted-nodes.gotemplate](tainted-nodes.gotemplate)
+
+```
+$ oc get nodes -o go-template-file=tainted-nodes.gotemplate 
+NODE: worker-1.mycluster.com
+TAINTS:
+  Key: app
+  Value: myapp
+  Effect: NoSchedule
+```
