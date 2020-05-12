@@ -10,6 +10,7 @@ A self-led workshop to demonstrate the power of go templates and how much fun yo
 * [Lesson 4: Adding more context](#lesson-4-adding-more-context)
 * [Lesson 5: Gotemplate nesting and modularity](#lesson-5-gotemplate-nesting-and-modularity)
 * [Lesson 6: Conditionals](#lesson-6-conditionals)
+* [Lesson 7: Functions](#lesson-7-functions)
 
 ### Prerequisites
 * Access to an OpenShift cluster.  Some lessons may require cluster-admin permissions.
@@ -571,3 +572,45 @@ Now we can see definitively when there are no labels instead of assuming that bl
 * We learned how to filter out objects from our output using conditionals.
 * We used conditionals to make our output clearer when there are no labels on a pod.
 * See `./lesson6.gotemplate` for the end result of what your template should look like.
+
+### Lesson 7: Functions
+gotemplates have a set of [predefined functions](https://golang.org/pkg/text/template/#hdr-Functions) that can be used to improve your gotemplate design.  In this lesson we'll put some of those functions to use in our `podlist.gotemplate` file.  If you've been following along then you should be caught up but you can also make a copy of `lesson6.gotemplate` to get back up to speed: `cp lesson6.gotemplate podlist.gotemplate`.
+
+The first function we're going to use is the `len` function which returns the count of whatever argument is passed to it.  In this case, it might be helpful for us to know how many containers a pod is running so we'll use `len` to put this information into our template.  Since this is a simple function call, we don't need to define another template, simply add `CONTAINER COUNT: {{len .spec.containers}}` into your main gotemplate block just under `POD: {{.metadata.name}}` so your main block should look like this:
+```
+POD: {{.metadata.name}}
+CONTAINER COUNT: {{len .spec.containers}}
+NODE: {{.spec.nodeName}}
+PHASE: {{.status.phase}}
+VOLUMES: {{template "volumes" .}}
+LABELS: {{template "labels" .}}
+```
+Run the gotemplate to see your new container count metric!
+```
+$ oc get pods -o go-template-file=podlist.gotemplate
+POD: httpd-example-1-7xz5x
+    CONTAINER COUNT: 1
+    NODE: worker-0.mycluster.com
+    PHASE: Running
+    VOLUMES: 
+        default-token-fdrhj
+    LABELS: 
+        deployment => httpd-example-1
+        deploymentconfig => httpd-example
+        name => httpd-example
+```
+We can also use functions to simplify our template design.  Let's take this line from the `labels` template as an example.
+```
+{{$label}}{{" => "}}{{$value -}}
+```
+There's a lot of gotemplate specific notation in there that makes it harder to tell what's going on.  We can use the `print` function to make this easier to read by changing the line like so:
+```
+{{print $label " => " $value -}}
+```
+Now its much more clear that we're going to print `$label` followed by `=>` and then `$value`.
+
+#### Recap
+* We learned about the set of predefined functions available in gotemplates.
+* We added a container count metric using the `len` function.
+* We simplified our `labels` template by using the `print` function.
+* See `./lesson7.gotemplate` for the end result of what your template should look like.
