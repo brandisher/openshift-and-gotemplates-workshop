@@ -31,23 +31,23 @@ Hello, World![user@machine]$
 ```
 Here is where we can take our first step into leveraging the formatting features of Go templates. You will notice that there is no newline after `Hello, World!` in the previous example; let's add a newline to put our prompt on a fresh line:
 ```
-[user@machine]$ oc get pods -o go-template='Hello, World!{{"\n"}}'
+[user@machine]$ oc get pods -o go-template='Hello, World!{% raw %}{{"\n"}}{% endraw %}'
 Hello, World!
 [user@machine]$
 ```
-Much better! This is a good opportunity to explain what we did and what is happening under the covers. First, the double open and close braces `{{ }}` tell the Go template engine some processing needs to happen. The `"\n"` tells the Go template engine to print a newline character at the end of `Hello, World!`. Since everything not inside `{{ }}` is treated as a string literal, if we left off the double quotes from the newline, or simply put `\n` after `Hello, World!`, we would get an error or output that does not achieve our goal:
+Much better! This is a good opportunity to explain what we did and what is happening under the covers. First, the double open and close braces `{% raw %}{{ }}{% endraw %}` tell the Go template engine some processing needs to happen. The `"\n"` tells the Go template engine to print a newline character at the end of `Hello, World!`. Since everything not inside `{% raw %}{{ }}{% endraw %}` is treated as a string literal, if we left off the double quotes from the newline, or simply put `\n` after `Hello, World!`, we would get an error or output that does not achieve our goal:
 ```
 # No braces
 [user@machine]$ oc get pods -o go-template='Hello, World!"\n"'
 Hello, World!"\n"[user@machine]$
 
 # No double quotes
-[user@machine]$ oc get pods -o go-template='Hello, World!{{\n}}'
-error: error parsing template Hello, World!{{\n}}, template: output:1: unexpected "\\" in command
+[user@machine]$ oc get pods -o go-template='Hello, World!{% raw %}{{\n}}{% endraw %}'
+error: error parsing template Hello, World!{% raw %}{{\n}}{% endraw %}, template: output:1: unexpected "\\" in command
 ```
 #### Recap
 * We passed a plain string to the Go template engine as a command line proof of concept.
-* We used `{{"\n"}}` to adjust the output formatting.
+* We used `{% raw %}{{"\n"}}{% endraw %}` to adjust the output formatting.
 * We learned how the Go Template engine determines what it needs to interpret.
 
 ### Lesson 2: A Practical Example
@@ -79,19 +79,19 @@ items:
 ```
 Looking at the top level keys, we can see `apiVersion`, `items`, and a number of other keys that I have snipped out for display purposes. Building on what we learned in the previous example, let's return the apiVersion value for the List object that gets returned:
 ```
-$ oc get pods -o go-template='{{.apiVersion}}{{"\n"}}'
+$ oc get pods -o go-template='{% raw %}{{.apiVersion}}{{"\n"}}{% endraw %}'
 v1
 ```
 That is a simple example of accessing a key in an object to retrieve the value. Since we know that this List object has our pods as well, let's try accessing the `items` key:
 ```
-$ oc get pods -o go-template='{{.items}}'
+$ oc get pods -o go-template='{% raw %}{{.items}}{% endraw %}'
 [text blob]
 ```
-After running that command, you should have received a rather large blob of text which amounts to the Go representation of the items values. This, of course, is not very helpful. We need to tell the template to read through the list and display something for each item in the list. That is where `range` comes in; it takes an array, slice, map, or channel and loops through it. The format is: `{{range pipeline}} T1 {{end}}`.
+After running that command, you should have received a rather large blob of text which amounts to the Go representation of the items values. This, of course, is not very helpful. We need to tell the template to read through the list and display something for each item in the list. That is where `range` comes in; it takes an array, slice, map, or channel and loops through it. The format is: `{% raw %}{{range pipeline}} T1 {{end}}{% endraw %}`.
 
 In the YAML snippet above, we can see that under items > metadata there is a `name` key which contains our pod name. The structure is traversed using dot notation, so to access the name of the item in the `range` structure, we use `.metadata.name`. Let's use `range` to print out the pod names:
 ```
-$ oc get pods -o go-template='{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}'
+$ oc get pods -o go-template='{% raw %}{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}{% endraw %}'
 httpd-example-1-build
 httpd-example-1-deploy
 httpd-example-1-rdnbw
@@ -109,9 +109,9 @@ The `oc` utility has an additional option for using Go templates, which is `-o g
 
 The first step is to get our Go template into a file. The filename does not matter, but my recommendation is to be indicative for easy identification. In this case, we will use `podlist.gotemplate` as the name and do a test run using the newly created file:
 ```
-$ echo '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}' > podlist.gotemplate
+$ echo '{% raw %}{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}{% endraw %}' > podlist.gotemplate
 $ cat podlist.gotemplate 
-{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}
+{% raw %}{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}{% endraw %}
 $ oc get pods -o go-template-file=podlist.gotemplate
 httpd-example-1-build
 httpd-example-1-deploy
@@ -121,21 +121,21 @@ $
 ```
 We have successfully moved our Go template structure into a file and can get data back. However, we now have a strange blank line at the end of our output. This happens because Go templates pass through whitespace without filtering it; it is left up to the Go template writer to remove that whitespace. There are two ways we can fix the unnecessary whitespace:
 
-1. Rerun our `echo` command with `-n` to skip the newline character: `echo -n '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}' > podlist.gotemplate`
+1. Rerun our `echo` command with `-n` to skip the newline character: `echo -n '{% raw %}{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}{% endraw %}' > podlist.gotemplate`
 2. Change the Go template to remove whitespace.
 
 Option 1 is low friction, since you are just adding a flag to the echo command. Option 2 requires some explanation but will help you in all Go templates instead of just in this section, so let's go with Option 2 by using your favorite text editor to open `podlist.gotemplate`.
 
 Your file should look like this:
 ```
-{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}
+{% raw %}{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}{% endraw %}
 ```
 
 Let's make this a bit more readable by putting the metadata and newline part of the template on its own line:
 ```
-{{range .items}}
+{% raw %}{{range .items}}
     {{.metadata.name}}{{"\n"}}
-{{end}}
+{{end}}{% endraw %}
 ```
 For the sake of example, if you save the file then rerun the `oc get` command, we wind up with _a lot_ of whitespace:
 ```
@@ -150,11 +150,11 @@ $ oc get pods -o go-template-file=podlist.gotemplate
     httpd-example-1-rdnbw
 
 ```
-To fix this, we will need to jump back to the Go template documentation on [text and spaces](https://golang.org/pkg/text/template/#hdr-Text_and_spaces). To summarize, adding a hyphen inside `{{ }}` will remove whitespace from the side that the hyphen is added to. So `{{- }}` will remove space to the left, and `{{ -}}` will remove space to the right, and `{{- -}}` will remove space from both sides. Let's put this into practice with our `podlist.gotemplate` file to get the output we are expecting. In your favorite editor, modify the file to look like this:
+To fix this, we will need to jump back to the Go template documentation on [text and spaces](https://golang.org/pkg/text/template/#hdr-Text_and_spaces). To summarize, adding a hyphen inside `{% raw %}{{ }}{% endraw %}` will remove whitespace from the side that the hyphen is added to. So `{% raw %}{{- }}{% endraw %}` will remove space to the left, and `{% raw %}{{ -}}{% endraw %}` will remove space to the right, and `{% raw %}{{- -}}{% endraw %}` will remove space from both sides. Let's put this into practice with our `podlist.gotemplate` file to get the output we are expecting. In your favorite editor, modify the file to look like this:
 ```
-{{- range .items -}}
+{% raw %}{{- range .items -}}
     {{.metadata.name}}{{"\n"}}
-{{- end -}}
+{{- end -}}{% endraw %}
 ```
 Then rerun the command for successful output:
 ```
@@ -176,13 +176,13 @@ To determine our success criteria, let's determine some questions we want to ans
 2. What life cycle phase is the pod in?
 3. Are the pods using any volumes?
 
-Number 1 is pretty easy since we are just accessing an individual key. Let's add `{{.spec.nodeName}}{{"\n"}}` to `podlist.gotemplate` and try it out:
+Number 1 is pretty easy since we are just accessing an individual key. Let's add `{% raw %}{{.spec.nodeName}}{{"\n"}}{% endraw %}` to `podlist.gotemplate` and try it out:
 ```
 $ cat podlist.gotemplate 
-{{- range .items -}}
+{% raw %}{{- range .items -}}
     {{.metadata.name}}{{"\n"}}
     {{.spec.nodeName}}{{"\n"}}
-{{- end -}}
+{{- end -}}{% endraw %}
 
 $ oc get pods -o go-template-file=podlist.gotemplate
 httpd-example-1-build
@@ -196,13 +196,13 @@ httpd-example-1-rdnbw
     worker-1.mycluster.com
 
 ```
-This is pretty close, but the formatting is off, and at a glance, we do not have any labels that describe what we are looking at. To remove the extra newline, we will drop the `{{"\n"}}` after the pod name, and then we can add some additional text so we know what the output means:
+This is pretty close, but the formatting is off, and at a glance, we do not have any labels that describe what we are looking at. To remove the extra newline, we will drop the `{% raw %}{{"\n"}}{% endraw %}` after the pod name, and then we can add some additional text so we know what the output means:
 ```
 $ cat podlist.gotemplate 
-{{- range .items -}}
+{% raw %}{{- range .items -}}
     POD: {{.metadata.name}}
     NODE: {{.spec.nodeName}}{{"\n"}}
-{{- end -}}
+{{- end -}}{% endraw %}
 
 $ oc get pods -o go-template-file=podlist.gotemplate
 POD: httpd-example-1-build
@@ -215,10 +215,10 @@ POD: httpd-example-1-rdnbw
 Much better. Now we can easily tell what the pod's name is, and what node it is running on. One thing you will notice about this output is that NODE is indented, but if you look at `podlist.gotemplate`, they appear to be on the same level. This goes back to how the Go template engine processes whitespace; the hyphen on the right side of our opening range block removes the whitespace from the template up until the word POD, then it prints out the pod name, followed by four spaces, and then NODE. If you want to be more verbose about formatting, you can accomplish the same thing by making your template look like the following:
 ```
 $ cat podlist.gotemplate 
-{{- range .items -}}
+{% raw %}{{- range .items -}}
     POD: {{.metadata.name}}{{"\n" -}}
     {{"    "}}NODE: {{.spec.nodeName}}{{"\n"}}
-{{- end -}}
+{{- end -}}{% endraw %}
 
 $ oc get pods -o go-template-file=podlist.gotemplate
 POD: httpd-example-1-build
@@ -233,11 +233,11 @@ For the rest of this lesson, we will use the simplified version, but when buildi
 Next, we need to get the pod's life cycle phase, which is similar to getting the node that the pod is running on. All we need to add is a call to `.status.phase` in our template:
 ```
 $ cat podlist.gotemplate 
-{{- range .items -}}
+{% raw %}{{- range .items -}}
     POD: {{.metadata.name}}
     NODE: {{.spec.nodeName}}
     PHASE: {{.status.phase}}{{"\n"}}
-{{- end -}}
+{{- end -}}{% endraw %}
 
 $ oc get pods -o go-template-file=podlist.gotemplate
 POD: httpd-example-1-build
@@ -253,7 +253,7 @@ POD: httpd-example-1-rdnbw
 The last piece we need to accomplish is getting a list of volumes from the pod:
 ```
 $ cat podlist.gotemplate 
-{{- range .items -}}
+{% raw %}{{- range .items -}}
     POD: {{.metadata.name}}
     NODE: {{.spec.nodeName}}
     PHASE: {{.status.phase}}
@@ -261,7 +261,7 @@ $ cat podlist.gotemplate
                 {{.name}}{{" "}}
              {{- end -}}
              {{"\n"}}
-{{- end -}}
+{{- end -}}{% endraw %}
 
 $ oc get pods -o go-template-file=podlist.gotemplate
 POD: httpd-example-1-build
@@ -289,7 +289,7 @@ In this lesson, we will focus on making our template a bit more modular so we ca
 
 If you have been following along, your `podlist.gotemplate` should look like this:
 ```
-{{- range .items -}}
+{% raw %}{{- range .items -}}
     POD: {{.metadata.name}}
     NODE: {{.spec.nodeName}}
     PHASE: {{.status.phase}}
@@ -297,19 +297,19 @@ If you have been following along, your `podlist.gotemplate` should look like thi
                 {{.name}}{{" "}}
              {{- end -}}
              {{"\n"}}
-{{- end -}}
+{{- end -}}{% endraw %}
 ```
 What we are going to do is move the logic for the volumes to its own template so we can make changes to the volume display easier. The first thing we need to do is define our template at the top of `podlist.gotemplate` and copy in our `range` block that is next to `VOLUMES`:
 ```
-{{- define "volumes" -}}
+{% raw %}{{- define "volumes" -}}
     {{range .spec.volumes -}}
         {{.name}}{{" "}}
     {{- end -}}
-{{- end -}}
+{{- end -}}{% endraw %}
 ```
 This template definition allows us to call it directly in our main template; let's make that change next by removing the `range` block next to `VOLUMES` and calling the new template we just defined. The end result will look like this:
 ```
-{{- define "volumes" -}}
+{% raw %}{{- define "volumes" -}}
     {{range .spec.volumes -}}
         {{.name}}{{" "}}
     {{- end -}}
@@ -320,9 +320,9 @@ This template definition allows us to call it directly in our main template; let
     NODE: {{.spec.nodeName}}
     PHASE: {{.status.phase}}
     VOLUMES: {{template "volumes" .}}{{"\n"}}
-{{- end -}}
+{{- end -}}{% endraw %}
 ```
-You will notice that all we passed to our newly defined template is "." which amounts to the current object being iterated on. So `{{template "volumes" .items[0]}}` then `{{template "volumes" .items[1]}}` and so on. Now let's run it to prove that it works:
+You will notice that all we passed to our newly defined template is "." which amounts to the current object being iterated on. So `{% raw %}{{template "volumes" .items[0]}}{% endraw %}` then `{% raw %}{{template "volumes" .items[1]}}{% endraw %}` and so on. Now let's run it to prove that it works:
 ```
 $ oc get pods -o go-template-file=podlist.gotemplate
 POD: httpd-example-1-build
@@ -345,11 +345,11 @@ Now, you might be saying to yourself, "Why did we do that work to get the same o
 Let's give this modularity a shot by adjusting the `volumes` template to display the list vertically instead of horizontally and then run the full template to see the output:
 ```
 $ head -n 5 podlist.gotemplate 
-{{- define "volumes" -}}
+{% raw %}{{- define "volumes" -}}
     {{range .spec.volumes}}
         {{.name -}}
     {{end}}
-{{- end -}}
+{{- end -}}{% endraw %}
 
 $ oc get pods -o go-template-file=podlist.gotemplate
 POD: httpd-example-1-build
@@ -379,11 +379,11 @@ POD: httpd-example-1-rdnbw
 ```
 That definitely makes the volume list much easier to read! Now let's use this premise of modularity to add more to our output. It might be helpful to have the list of labels on the pods also, so let's define a Go template for labels. Since labels are key:value pairs, we will need to leverage variable assignment to get both the key and the value. At the top of `podlist.gotemplate` add the following `labels` definition:
 ```
-{{- define "labels" -}}
+{% raw %}{{- define "labels" -}}
     {{range $label,$value := .metadata.labels}}
         {{$label}}{{" => "}}{{$value -}}
     {{end}}
-{{- end -}}
+{{- end -}}{% endraw %}
 ```
 Let's break down what this is doing:
 1. Define a template named `labels`.
@@ -393,14 +393,14 @@ Let's break down what this is doing:
 Now that we understand what this template is doing, we need to incorporate it into our main template to print out the labels. Add a `LABELS` section to the main template so it looks like the following and then run the template:
 ```
 $ tail -n 8 podlist.gotemplate 
-{{- range .items -}}
+{% raw %}{{- range .items -}}
     POD: {{.metadata.name}}
     NODE: {{.spec.nodeName}}
     PHASE: {{.status.phase}}
     VOLUMES: {{template "volumes" .}}
     LABELS: {{template "labels" .}}
     {{- "\n"}}
-{{- end -}}
+{{- end -}}{% endraw %}
 
 $ oc get pods -o go-template-file=podlist.gotemplate
 POD: httpd-example-1-build
@@ -459,7 +459,7 @@ POD: httpd-example
 We can quickly see that this is partially correct and partially misleading. `httpd-example` may look similar to a pod name, but it is actually the name of the service. However, the labels are correct; modularity for the win! Now we need to make sure that our template only runs for pods. What we will add is an `if` statement and check to ensure that the value of `Kind` is equal to the string `Pod`. If that evaluates to `true` then the template will run for that particular object. Adjust your main template to look like the following:
 ```
 $ tail -n 10 podlist.gotemplate 
-{{- range .items -}}
+{% raw %}{{- range .items -}}
     {{- if eq .kind "Pod" -}}
     POD: {{.metadata.name}}
     NODE: {{.spec.nodeName}}
@@ -468,9 +468,9 @@ $ tail -n 10 podlist.gotemplate
     LABELS: {{template "labels" .}}
     {{- "\n"}}
     {{- end -}}
-{{- end -}}
+{{- end -}}{% endraw %}
 ```
-If you check in the [Go Template Actions](https://golang.org/pkg/text/template/#hdr-Actions) documentation, you will see there is an option to do `{{if pipeline}}` where pipeline can be an actual pipeline (like our list of objects) or a sequence of commands/functions. In this case, we are using the `eq` (equals) function to check if the value of `.kind` matches the string `Pod`. If this returns true, it will print out all of the data we expect to see for a pod like in the previous lessons. More on `eq` and other comparison functions can be found in the [Go Template Functions](https://golang.org/pkg/text/template/#hdr-Functions) documentation.
+If you check in the [Go Template Actions](https://golang.org/pkg/text/template/#hdr-Actions) documentation, you will see there is an option to do `{% raw %}{{if pipeline}}{% endraw %}` where pipeline can be an actual pipeline (like our list of objects) or a sequence of commands/functions. In this case, we are using the `eq` (equals) function to check if the value of `.kind` matches the string `Pod`. If this returns true, it will print out all of the data we expect to see for a pod like in the previous lessons. More on `eq` and other comparison functions can be found in the [Go Template Functions](https://golang.org/pkg/text/template/#hdr-Functions) documentation.
 
 To test out our template, let's do `oc get all` so we are checking against more than just the `Service` use case. We will also run a sanity check using `oc get services` to ensure nothing gets returned:
 ```
@@ -533,7 +533,7 @@ POD: httpd-example-1-build
 We can use conditionals to make this more obvious when there are no labels. Let's adjust our `labels` template to include a conditional and rerun our test:
 ```
 $ head -n 9 podlist.gotemplate 
-{{- define "labels" -}}
+{% raw %}{{- define "labels" -}}
     {{if .metadata.labels}}
     {{- range $label,$value := .metadata.labels}}
         {{$label}}{{" => "}}{{$value -}}
@@ -541,7 +541,7 @@ $ head -n 9 podlist.gotemplate
     {{else}}
         No labels
     {{end}}
-{{- end -}}
+{{- end -}}{% endraw %}
 
 $ oc get pods -o go-template-file=podlist.gotemplate
 POD: httpd-example-1-build
@@ -572,14 +572,14 @@ Now we can see definitively when there are no labels instead of assuming that bl
 ### Lesson 7: Functions
 Go templates have a set of [predefined functions](https://golang.org/pkg/text/template/#hdr-Functions) that can be used to improve your Go template design. In this lesson, we will put some of those functions to use in our `podlist.gotemplate` file. If you have been following along, then you should be caught up, but you can also make a copy of `lesson6.gotemplate` to get back up to speed: `cp lesson6.gotemplate podlist.gotemplate`.
 
-The first function we are going to use is the `len` function, which returns the count of whatever argument is passed to it. In this case, it might be helpful for us to know how many containers a pod is running, so we will use `len` to put this information into our template. Since this is a simple function call, we do not need to define another template; simply add `CONTAINER COUNT: `{{len .spec.containers}}` into your main Go template block just under `POD: {{.metadata.name}}` so your main block should look like this:
+The first function we are going to use is the `len` function, which returns the count of whatever argument is passed to it. In this case, it might be helpful for us to know how many containers a pod is running, so we will use `len` to put this information into our template. Since this is a simple function call, we do not need to define another template; simply add `CONTAINER COUNT: `{% raw %}{{len .spec.containers}}{% endraw %}` into your main Go template block just under `POD: {% raw %}{{.metadata.name}}{% endraw %}` so your main block should look like this:
 ```
-POD: {{.metadata.name}}
-CONTAINER COUNT: {{len .spec.containers}}
-NODE: {{.spec.nodeName}}
-PHASE: {{.status.phase}}
-VOLUMES: {{template "volumes" .}}
-LABELS: {{template "labels" .}}
+POD: {% raw %}{{.metadata.name}}{% endraw %}
+CONTAINER COUNT: {% raw %}{{len .spec.containers}}{% endraw %}
+NODE: {% raw %}{{.spec.nodeName}}{% endraw %}
+PHASE: {% raw %}{{.status.phase}}{% endraw %}
+VOLUMES: {% raw %}{{template "volumes" .}}{% endraw %}
+LABELS: {% raw %}{{template "labels" .}}{% endraw %}
 ```
 Run the Go template to see your new container count metric:
 ```
@@ -597,11 +597,11 @@ POD: httpd-example-1-7xz5x
 ```
 We can also use functions to simplify our template design. Let's take this line from the `labels` template as an example:
 ```
-{{$label}}{{" => "}}{{$value -}}
+{% raw %}{{$label}}{{" => "}}{{$value -}}{% endraw %}
 ```
 There is a lot of Go template  specific notation in there that makes it harder to tell what is going on. We can use the `print` function to make this easier to read by changing the line like so:
 ```
-{{print $label " => " $value -}}
+{% raw %}{{print $label " => " $value -}}{% endraw %}
 ```
 Now it is much more clear that we are going to print `$label` followed by `=>` and then `$value`.
 
@@ -644,7 +644,7 @@ COUNT    NAMESPACE       MESSAGE
 13       openshift-sdn   Liveness probe failed: ovs-ofctl: /var/run/openvswitch/br0.mgmt: failed to open socket (Broken pipe)
 ```
 **Tips**
-* Add `--sort-by={.count}` to apply event sorting by count.
+* Add `--sort-by={% raw %}{.count}{% endraw %}` to apply event sorting by count.
 
 **Test Conditions**
 
